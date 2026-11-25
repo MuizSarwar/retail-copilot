@@ -1,0 +1,22 @@
+version: "3.8"
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: retail-copilot-postgres
+    environment:
+      POSTGRES_USER: retail
+      POSTGRES_PASSWORD: retail
+      POSTGRES_DB: retail_copilot
+    ports:
+      - "5433:5432"
+    volumes:
+      - retail-copilot-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U retail -d retail_copilot"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  retail-copilot-postgres-data:
