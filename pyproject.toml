@@ -1,0 +1,24 @@
+[project]
+name = "retail-copilot"
+version = "0.1.0"
+description = "Retail Copilot - Inventory + AI assistant for small grocery shops"
+requires-python = ">=3.10"
+
+dependencies = [
+    "fastapi>=0.115.0,<0.116.0",
+    "uvicorn[standard]>=0.30.0,<0.31.0",
+    "pydantic-settings>=2.4.0,<2.5.0",
+]
+
+[project.scripts]
+retail-copilot = "app.main:cli"
+
+[tool.uv]
+# All dependencies are pinned by uv.lock (committed)
+
+[tool.ruff]
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I"]
+ignore = ["E501"]
