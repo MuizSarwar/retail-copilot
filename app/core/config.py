@@ -32,5 +32,11 @@ class Settings(BaseSettings):
     embedding_service_url: str = "http://embedding:8001/embed"
     embedding_dimension: int = 384
 
+    # Seed script credentials (required)
+    seed_admin_email: str
+    seed_admin_password: str
+    seed_employee_email: str
+    seed_employee_password: str
+
 
 settings = Settings()
