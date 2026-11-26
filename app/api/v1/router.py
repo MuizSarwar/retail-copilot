@@ -5,7 +5,7 @@ router = APIRouter()
 # Module routers registered exactly once under /api/v1.
 # Routes are defined inside module controllers, not duplicated here.
 from app.modules.auth.controllers.router import router as auth_router
-from app.modules.products.controllers.ping_controller import router as products_router
+from app.modules.products.controllers.product_controller import router as products_router
 from app.modules.sales.controllers.router import router as sales_router
 from app.modules.stock_increase.controllers.router import router as stock_increase_router
 from app.modules.dashboard.controllers.router import router as dashboard_router

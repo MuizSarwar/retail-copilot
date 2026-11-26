@@ -5,7 +5,7 @@ Represents an inventory item in the shop. Full CRUD is supported.
 
 from datetime import datetime
 from decimal import Decimal
-from sqlalchemy import CheckConstraint, Numeric, String
+from sqlalchemy import CheckConstraint, Index, func, Numeric, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base, created_at_column, updated_at_column
@@ -33,3 +33,8 @@ class Product(Base):
 
     def __repr__(self) -> str:
         return f"<Product(id={self.id}, name={self.name})>"
+
+
+# Functional unique index on lower(trim(name)) — matches Alembic migration
+# a1b2c3d4e5f6. Same index name and expression.
+Index("idx_products_name_lower", func.lower(func.trim(Product.name)), unique=True)
