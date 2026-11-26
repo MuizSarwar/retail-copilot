@@ -1,9 +1,11 @@
 """Security layer — password hashing and JWT utilities.
 
-Argon2id password hashing is implemented here.  JWT create/verify
-will be added in Parts 7-8 (Authentication and Authorization).
+Argon2id password hashing and JWT create/verify are implemented here.
 """
 
+from datetime import datetime, timedelta, timezone
+
+import jwt
 from argon2 import PasswordHasher
 from argon2.exceptions import VerifyMismatchError
 
@@ -34,3 +36,45 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
         return True
     except VerifyMismatchError:
         return False
+
+
+def create_access_token(
+    user_id: int,
+    secret_key: str,
+    algorithm: str,
+    expire_minutes: int,
+) -> str:
+    """Create a JWT access token.
+
+    Claims:
+    - sub: user ID (subject) as a string
+    - exp: expiration timestamp (UTC)
+    - iat: issued at timestamp (UTC)
+
+    The token contains only the user ID and expiry — never the role,
+    password, or other sensitive data.  The role is loaded from the
+    database on each authenticated request.
+    """
+    now = datetime.now(timezone.utc)
+    expire = now + timedelta(minutes=expire_minutes)
+
+    payload = {
+        "sub": str(user_id),
+        "exp": expire,
+        "iat": now,
+    }
+
+    return jwt.encode(payload, secret_key, algorithm=algorithm)
+
+
+def verify_access_token(
+    token: str,
+    secret_key: str,
+    algorithm: str,
+) -> dict:
+    """Verify a JWT access token and return its payload.
+
+    Raises jwt.ExpiredSignatureError if the token has expired.
+    Raises jwt.InvalidTokenError if the token is invalid.
+    """
+    return jwt.decode(token, secret_key, algorithms=[algorithm])

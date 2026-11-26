@@ -10,6 +10,10 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
 
+# Import Product and Sale to resolve string forward references in relationships.
+from app.modules.products.models.product import Product  # noqa: F401
+from app.modules.sales.models.sale import Sale  # noqa: F401
+
 
 class SaleItem(Base):
     __tablename__ = "sale_items"

@@ -10,6 +10,11 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base, created_at_column, updated_at_column
 
+# Import Sale and SaleItem to resolve string forward references in relationships.
+# This must happen before any query is executed against User or Sale.
+from app.modules.sales.models.sale import Sale  # noqa: F401
+from app.modules.sales.models.sale_item import SaleItem  # noqa: F401
+
 
 class User(Base):
     __tablename__ = "users"

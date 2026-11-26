@@ -10,7 +10,7 @@ Components:
 from collections.abc import AsyncGenerator
 from datetime import datetime
 
-from sqlalchemy import DateTime, func
+from sqlalchemy import DateTime, func, pool
 from sqlalchemy.ext.asyncio import (
     AsyncSession,
     async_sessionmaker,
@@ -47,7 +47,9 @@ def updated_at_column() -> mapped_column:
 
 
 # Create the async engine. asyncpg is the driver that talks to PostgreSQL.
-engine = create_async_engine(settings.database_url, echo=False)
+# NullPool creates a fresh connection for each operation, avoiding
+# connection pool corruption on Windows with asyncpg.
+engine = create_async_engine(settings.database_url, echo=False, poolclass=pool.NullPool)
 
 # Session factory: creates AsyncSession objects when called.
 SessionLocal = async_sessionmaker(
@@ -60,8 +62,14 @@ SessionLocal = async_sessionmaker(
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
     """FastAPI dependency that provides an async database session per request.
 
-    Yields a session, then ensures it is closed after the request finishes.
+    Yields a session, commits on success, rolls back on error, and ensures
+    the session is closed after the request finishes.
     Use as: db: AsyncSession = Depends(get_db)
     """
     async with SessionLocal() as session:
-        yield session
+        try:
+            yield session
+            await session.commit()
+        except Exception:
+            await session.rollback()
+            raise
