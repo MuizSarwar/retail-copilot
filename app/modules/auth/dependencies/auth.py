@@ -1,20 +1,22 @@
 """Authentication dependencies — JWT verification and user extraction.
 
 Dependencies used by controllers to authenticate requests and extract
-the current user's ID from a Bearer JWT.
+the current user's ID and role from a Bearer JWT, loading them from
+PostgreSQL on every request (never trusting JWT claims for role info).
 """
 
-from typing import Optional
+from typing import Callable, Optional
 
 from fastapi import Depends, Header
 import jwt
 
 from app.core.config import settings
-from app.core.database import get_db
-from app.core.exceptions import Unauthorized
+from app.core.database import AsyncSession, get_db
+from app.core.exceptions import Forbidden, Unauthorized
 from app.core.security import verify_access_token
+from app.modules.auth.models.role import Role
+from app.modules.auth.models.user import User
 from app.modules.auth.repositories.user_repository import UserRepository
-from app.modules.auth.services.auth_service import AuthService
 
 
 async def get_user_repository(
@@ -24,20 +26,15 @@ async def get_user_repository(
     return UserRepository(session=db)
 
 
-async def get_auth_service(
+async def get_current_user(
     repository: UserRepository = Depends(get_user_repository),
-) -> AuthService:
-    """Create an AuthService with the given repository."""
-    return AuthService(repository=repository)
-
-
-async def get_current_user_id(
     authorization: Optional[str] = Header(None),
-) -> int:
-    """Extract the user ID from a Bearer JWT token.
+) -> User:
+    """Validate JWT, extract user_id, and fetch user + role from PostgreSQL.
 
-    Returns the user ID (sub claim) as an integer.
-    Raises Unauthorized if the token is missing, invalid, or expired.
+    Returns the User SQLAlchemy model with its role eagerly loaded.
+    Raises Unauthorized if the token is missing, invalid, expired, or
+    the user is inactive.
     """
     if authorization is None:
         raise Unauthorized(message="Invalid email or password")
@@ -59,6 +56,39 @@ async def get_current_user_id(
         user_id_str: str = payload.get("sub")
         if user_id_str is None:
             raise Unauthorized(message="Invalid email or password")
-        return int(user_id_str)
+        user_id = int(user_id_str)
     except (jwt.ExpiredSignatureError, jwt.InvalidTokenError):
         raise Unauthorized(message="Invalid email or password")
+
+    # Fetch user from PostgreSQL (role is eagerly loaded via selectinload)
+    user = await repository.get_by_id(user_id)
+    if user is None:
+        raise Unauthorized(message="Invalid email or password")
+
+    if not user.is_active:
+        raise Unauthorized(message="Invalid email or password")
+
+    return user
+
+
+def require_roles(*allowed_roles: str) -> Callable:
+    """Dependency factory that returns a dependency checking the user's role.
+
+    Usage:
+        @router.post("/products", dependencies=[Depends(require_roles("admin"))])
+
+    Raises Forbidden (403) if the user's role is not in allowed_roles.
+    """
+    async def role_dependency(
+        current_user: User = Depends(get_current_user),
+    ) -> User:
+        if current_user.role.name not in allowed_roles:
+            raise Forbidden(message="Insufficient permissions")
+        return current_user
+
+    return role_dependency
+
+
+def require_admin() -> Callable:
+    """Dependency that requires the admin role."""
+    return require_roles("admin")

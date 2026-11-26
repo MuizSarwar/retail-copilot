@@ -9,7 +9,8 @@ from typing import Annotated
 from fastapi import APIRouter, Depends
 
 from app.core.database import AsyncSession, get_db
-from app.modules.auth.dependencies.auth import get_current_user_id
+from app.modules.auth.dependencies.auth import get_current_user
+from app.modules.auth.models.user import User
 from app.modules.auth.repositories.user_repository import UserRepository
 from app.modules.auth.schemas.auth import (
     LoginRequest,
@@ -52,9 +53,16 @@ async def login(
 
 @router.get("/me", response_model=UserResponse)
 async def get_me(
-    service: AuthService = Depends(get_auth_service),
-    current_user_id: int = Depends(get_current_user_id),
+    current_user: User = Depends(get_current_user),
 ) -> UserResponse:
-    """Get the currently authenticated user with their role."""
-    result = await service.get_current_user(user_id=current_user_id)
-    return UserResponse(**result)
+    """Get the currently authenticated user with their role.
+
+    Role is loaded from PostgreSQL by get_current_user, not from JWT claims.
+    """
+    return UserResponse(
+        id=current_user.id,
+        email=current_user.email,
+        role=current_user.role.name,
+        is_active=current_user.is_active,
+        created_at=current_user.created_at,
+    )

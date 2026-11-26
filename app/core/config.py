@@ -38,5 +38,8 @@ class Settings(BaseSettings):
     seed_employee_email: str
     seed_employee_password: str
 
+    # Test database (required, must differ from DATABASE_URL)
+    test_database_url: str
+
 
 settings = Settings()

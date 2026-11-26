@@ -38,7 +38,17 @@ config = context.config
 
 # Override the sqlalchemy.url from alembic.ini with the value from
 # the application's settings (.env via pydantic-settings).
-config.set_main_option("sqlalchemy.url", settings.database_url)
+# When APP_ENV=testing, use TEST_DATABASE_URL to connect to the test database.
+database_url = settings.database_url
+if settings.app_env == "testing":
+    if settings.test_database_url == settings.database_url:
+        raise RuntimeError(
+            "TEST_DATABASE_URL must not equal DATABASE_URL. "
+            "Tests must use a separate database to avoid destroying dev data."
+        )
+    database_url = settings.test_database_url
+
+config.set_main_option("sqlalchemy.url", database_url)
 
 # Interpret the config file for Python logging.
 if config.config_file_name is not None:

@@ -49,7 +49,17 @@ def updated_at_column() -> mapped_column:
 # Create the async engine. asyncpg is the driver that talks to PostgreSQL.
 # NullPool creates a fresh connection for each operation, avoiding
 # connection pool corruption on Windows with asyncpg.
-engine = create_async_engine(settings.database_url, echo=False, poolclass=pool.NullPool)
+database_url = settings.database_url
+if settings.app_env == "testing":
+    # Safety check: never use the development database for tests.
+    if settings.test_database_url == settings.database_url:
+        raise RuntimeError(
+            "TEST_DATABASE_URL must not equal DATABASE_URL. "
+            "Tests must use a separate database to avoid destroying dev data."
+        )
+    database_url = settings.test_database_url
+
+engine = create_async_engine(database_url, echo=False, poolclass=pool.NullPool)
 
 # Session factory: creates AsyncSession objects when called.
 SessionLocal = async_sessionmaker(
